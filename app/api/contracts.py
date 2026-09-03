@@ -9,8 +9,8 @@ contracts_router = APIRouter(
     tags=["contracts"]
 )
 
-CONTRACTS_LIST = [Contract(id_=1, customer_name="Customer 1", manager_name="Manager 1", vendor_contract_id="VC001", product_description="Product 1", coverage_end_date=date(2023, 12, 31), quantity=10, total_value=1000.0, created_at=datetime.now(), updated_at=datetime.now()),
-                 Contract(id_=2, customer_name="Customer 2", manager_name="Manager 2", vendor_contract_id="VC002", product_description="Product 2", coverage_end_date=date(2023, 12, 31), quantity=20, total_value=2000.0, created_at=datetime.now(), updated_at=datetime.now())
+CONTRACTS_LIST = [Contract(customer_name="Customer 1", manager_name="Manager 1", vendor_contract_id="VC001", product_description="Product 1", coverage_end_date=date(2023, 12, 31), quantity=10, total_value=1000.0),
+                 Contract(customer_name="Customer 2", manager_name="Manager 2", vendor_contract_id="VC002", product_description="Product 2", coverage_end_date=date(2023, 12, 31), quantity=20, total_value=2000.0)
                 ]
 
 @contracts_router.get("/", response_model=list[Contract])
