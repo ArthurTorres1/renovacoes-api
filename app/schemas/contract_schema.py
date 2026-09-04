@@ -1,7 +1,7 @@
 
 from datetime import date
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ContractSchema(BaseModel):
@@ -10,5 +10,5 @@ class ContractSchema(BaseModel):
     vendor_contract_id: str
     product_description: str
     coverage_end_date: date
-    quantity: int
-    total_value: float
+    quantity: int = Field(gt=0)
+    total_value: float = Field(ge=0)
