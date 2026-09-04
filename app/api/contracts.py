@@ -1,7 +1,11 @@
+from http import HTTPStatus
+
 from fastapi import APIRouter
 
 from app.models.contract import Contract
 from datetime import date, datetime
+
+from app.schemas.contract_schema import ContractSchema
 
 
 contracts_router = APIRouter(
@@ -9,16 +13,17 @@ contracts_router = APIRouter(
     tags=["contracts"]
 )
 
-CONTRACTS_LIST = [Contract(id_=1, customer_name="Customer 1", manager_name="Manager 1", vendor_contract_id="VC001", product_description="Product 1", coverage_end_date=date(2023, 12, 31), quantity=10, total_value=1000.0, created_at=datetime.now(), updated_at=datetime.now()),
-                 Contract(id_=2, customer_name="Customer 2", manager_name="Manager 2", vendor_contract_id="VC002", product_description="Product 2", coverage_end_date=date(2023, 12, 31), quantity=20, total_value=2000.0, created_at=datetime.now(), updated_at=datetime.now())
+CONTRACTS_LIST = [Contract(customer_name="Customer 1", manager_name="Manager 1", vendor_contract_id="VC001", product_description="Product 1", coverage_end_date=date(2023, 12, 31), quantity=10, total_value=1000.0),
+                 Contract(customer_name="Customer 2", manager_name="Manager 2", vendor_contract_id="VC002", product_description="Product 2", coverage_end_date=date(2023, 12, 31), quantity=20, total_value=2000.0)
                 ]
 
-@contracts_router.get("/", response_model=list[Contract])
+@contracts_router.get("/",status_code=HTTPStatus.OK, response_model=list[Contract])
 async def get_contracts():
     return CONTRACTS_LIST
 
-@contracts_router.get("/{contract_id}", response_model=Contract | None)
+@contracts_router.get("/{contract_id}", status_code=HTTPStatus.OK, response_model=Contract | None)
 async def get_contract(contract_id: int):
+    
     for contract in CONTRACTS_LIST:
         if(contract.id_ == contract_id):
             return contract
@@ -26,6 +31,6 @@ async def get_contract(contract_id: int):
     return {"error": "Contract not found"}, 404
 
 
-@contracts_router.post("/", response_model=Contract)
-async def create_contract(contract: Contract):
+@contracts_router.post("/", status_code=HTTPStatus.CREATED, response_model=Contract)
+async def create_contract(contract: ContractSchema):
     return contract

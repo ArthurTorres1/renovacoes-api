@@ -1,3 +1,7 @@
 venv
 __pycache__/
 *.pyc
+
+.env
+renewal_tracker.db
+renewal-tracker.db
