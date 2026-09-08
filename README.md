@@ -64,7 +64,7 @@ O resultado esperado e a revisao mais recente identificada como `head`.
 Com o ambiente virtual ativo:
 
 ```powershell
-uvicorn app.main:app --reload
+python run.py
 ```
 
 A API ficara disponivel em:
