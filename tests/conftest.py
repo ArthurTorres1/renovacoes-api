@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import Session
@@ -33,3 +34,20 @@ def session():
         yield session
     
     table_registry.metadata.drop_all(engine)
+    
+@pytest.fixture
+def contract(session):
+    contract = Contract(
+        manager_name="John Doe",
+        customer_name="Jane Smith",
+        coverage_end_date=date(2024, 12, 31),
+        product_description="Sample Product",
+        vendor_contract_id="VENDOR123",
+        quantity=10,
+        total_value=1000.0
+    )
+    session.add(contract)
+    session.commit()
+    session.refresh(contract)
+    
+    return contract
