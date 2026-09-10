@@ -2,72 +2,62 @@
 from datetime import date
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_session
-from app.models.contract import Contract
-
 from app.schemas.contract_schema import ContractList, ContractResponse, ContractSchema
+from app.schemas.renewal_summary_schema import RenewalSummary
+from app.services.contract_service import (
+    create_contract_service,
+    delete_contract_service,
+    find_contract_by_id,
+    get_all_contracts_service,
+    get_renewal_summary_service,
+    update_contract_service,
+)
 
 
 contracts_router = APIRouter(
-    prefix="/api/v1/contracts",
+    prefix="/api/v1",
     tags=["contracts"]
 )
 
-@contracts_router.get("/health",status_code=HTTPStatus.OK, response_model=list[Contract])
+@contracts_router.get("/health",status_code=HTTPStatus.OK)
 async def get_contracts():
-    return {'ok'}
+    return {'status': 'ok'}
 
-@contracts_router.get("/", status_code=HTTPStatus.OK, response_model=ContractList)
+@contracts_router.get("/contracts", status_code=HTTPStatus.OK, response_model=ContractList)
 async def get_contract(
     start_date: date | None = None,
     end_date: date | None = None,
     manager_name: str | None = None,
     customer_name: str | None = None,
-    offset: int = 0,
-    limit: int=10,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=25, ge=1, le=100),
     session = Depends(get_session)
 ):
-    
-    filters = []
     if start_date is not None and end_date is not None:
         if end_date < start_date:
-            raise HTTPException (
-                status_code= HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail=f"O campo end_date deve ser maior ou igual a start_date."
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail="end_date precisa ser maior ou igual o campo start_date.",
             )
-    
-    if start_date:
-        filters.append(Contract.coverage_end_date >= start_date)
-    if end_date:
-        filters.append(Contract.coverage_end_date <= end_date)
-    if manager_name:
-        filters.append(Contract.manager_name.ilike(f"%{manager_name}%"))
-    if customer_name:
-        filters.append(Contract.customer_name.ilike(f"%{customer_name}%"))
-    
-    query = (
-        select(Contract)
-        .where(*filters)
-        .order_by(
-            Contract.coverage_end_date.asc(),
-            Contract.customer_name.asc(),
-            Contract.id_.asc()
-            )
-        .offset(offset)
-        .limit(limit)
-    )
-    
-    contracts = session.scalars(query).all()
-    return {'contracts': contracts}
 
-@contracts_router.get("/{contract_id}", status_code=HTTPStatus.OK, response_model=ContractResponse)
+    return get_all_contracts_service(
+        session=session,
+        start_date=start_date,
+        end_date=end_date,
+        manager_name=manager_name,
+        customer_name=customer_name,
+        page=page,
+        limit=limit,
+    )
+
+@contracts_router.get("/contracts/{contract_id}", status_code=HTTPStatus.OK, response_model=ContractResponse)
 async def get_contract_by_id(contract_id: int, session = Depends(get_session)):
     
-    contract = session.scalar(select(Contract).where(Contract.id_ == contract_id))
+    contract = find_contract_by_id(session, contract_id)
     
     if not contract:
         raise HTTPException(
@@ -78,87 +68,72 @@ async def get_contract_by_id(contract_id: int, session = Depends(get_session)):
     return contract
 
 
-@contracts_router.post("/", status_code=HTTPStatus.CREATED, response_model=ContractResponse)
+@contracts_router.post("/contracts", status_code=HTTPStatus.CREATED, response_model=ContractResponse)
 async def create_contract(
     contract: ContractSchema,
     session = Depends(get_session)
     ):
     
-    #SELECT * FROM contracts WHERE vendor_contract_id = :vendor_contract_id
-    existing_contract = session.scalar(
-        select(Contract).where(
-            Contract.vendor_contract_id == contract.vendor_contract_id
-            )
+    try:
+        return create_contract_service(
+            session,
+            contract
         )
-    
-    if existing_contract:
+    except (IntegrityError, ValueError) as error:
         raise HTTPException(
             status_code=HTTPStatus.CONFLICT,
-            detail=f"Contract with vendor_contract_id already exists."
-        ) 
-    
-    existing_contract = Contract(
-        customer_name=contract.customer_name,
-        manager_name=contract.manager_name,
-        vendor_contract_id=contract.vendor_contract_id,
-        product_description=contract.product_description,
-        coverage_end_date=contract.coverage_end_date,
-        quantity=contract.quantity,
-        total_value=contract.total_value
-    )
-    
-    session.add(existing_contract)
-    session.commit()
-    session.refresh(existing_contract)
-    
-    return existing_contract
+            detail=str(error),
+        )
 
-@contracts_router.put("/{contract_id}", status_code=HTTPStatus.OK, response_model=ContractResponse)
+@contracts_router.put("/contracts/{contract_id}", status_code=HTTPStatus.OK, response_model=ContractResponse)
 async def update_contract(contract_id: int, contract: ContractSchema, session = Depends(get_session)):
     
-    contract_db = session.scalar(select(Contract).where(Contract.id_ == contract_id))
-    
-    if not contract_db:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail=f"Contract not found."
-        )
-        
     try:
-    
-        contract_db.customer_name = contract.customer_name
-        contract_db.manager_name = contract.manager_name
-        contract_db.vendor_contract_id = contract.vendor_contract_id
-        contract_db.product_description = contract.product_description
-        contract_db.coverage_end_date = contract.coverage_end_date
-        contract_db.quantity = contract.quantity
-        contract_db.total_value = contract.total_value
-        
-        session.commit()
-        session.refresh(contract_db)
+        contract = update_contract_service(
+            session,
+            contract_id,
+            contract,
+        )
 
-        return contract_db
-    
-    except IntegrityError as e:
+        if contract is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail="Contract not found.",
+            )
+
+        return contract
+
+    except ValueError as error:
         raise HTTPException(
             status_code=HTTPStatus.CONFLICT,
-            detail=f"Contract with vendor_contract_id already exists."
+            detail=str(error),
         )
 
-
-
-@contracts_router.delete("/{contract_id}", status_code=HTTPStatus.OK)
+@contracts_router.delete("/contracts/{contract_id}", status_code=HTTPStatus.OK)
 async def delete_contract(contract_id: int, session = Depends(get_session)):
-    
-    contract_db = session.scalar(select(Contract).where(Contract.id_ == contract_id))
-    
-    if not contract_db:
+    deleted = delete_contract_service(session, contract_id)
+
+    if not deleted:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
-            detail=f"Contract not found."
+            detail="Contract not found.",
         )
-    
-    session.delete(contract_db)
-    session.commit()
-    
+
     return {"message": "Contract deleted successfully."}
+
+@contracts_router.get("/renewals/upcoming/summary", status_code=HTTPStatus.OK, response_model=RenewalSummary)
+async def resume_upcoming(
+    end_date: date | None = None,
+    manager_name: str | None = None,
+    customer_name: str | None = None,
+    session = Depends(get_session)
+):
+    return get_renewal_summary_service(
+        session=session,
+        end_date=end_date,
+        manager_name=manager_name,
+        customer_name=customer_name,
+    )
+    
+    
+    
