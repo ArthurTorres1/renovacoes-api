@@ -22,4 +22,7 @@ class ContractResponse(ContractSchema):
     model_config = ConfigDict(from_attributes=True)
     
 class ContractList(BaseModel):
-    contracts: list[ContractResponse]
+    total: int
+    page: int
+    limit: int
+    rows: list[ContractResponse]
