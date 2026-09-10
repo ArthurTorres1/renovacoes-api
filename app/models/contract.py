@@ -11,7 +11,7 @@ class Contract:
     
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_contract_quantity_positive"),
-        CheckConstraint("total_value > 0", name="ck_contract_total_value_positive"),
+        CheckConstraint("total_value >= 0", name="ck_contract_total_value_positive"),
     )
 
     id_: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
