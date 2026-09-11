@@ -97,6 +97,52 @@ def test_read_contracts_with_data(client, contract):
         'rows': [contract_schema]
     }
 
+def test_read_contract_with_filters(client, contract):
+    response = client.get(
+        "api/v1/contracts/",
+        params={
+            "customer_name": contract.customer_name[:4],
+            "manager_name": contract.manager_name[:4],
+            "start_date": date(2024, 1, 1).isoformat(),
+            "end_date": date(2026, 12, 31).isoformat(),
+        }
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        'total': 1,
+        'page': 1,
+        'limit': 25,
+        'rows': [
+            {
+                "id_": contract.id_,
+                "customer_name": contract.customer_name,
+                "manager_name": contract.manager_name,
+                "vendor_contract_id": contract.vendor_contract_id,
+                "product_description": contract.product_description,
+                "coverage_end_date": contract.coverage_end_date.isoformat(),
+                "quantity": contract.quantity,
+                "total_value": float(contract.total_value),
+                "created_at": contract.created_at.isoformat(),
+                "updated_at": contract.updated_at.isoformat(),
+            }
+        ]
+    }
+
+def test_failed_of_invalid_date_range(client):
+    response = client.get(
+        "api/v1/contracts/",
+        params={
+            "start_date": date(2026, 1, 1).isoformat(),
+            "end_date": date(2024, 12, 31).isoformat(),
+        }
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert response.json() == {
+        "detail": "end_date precisa ser maior ou igual o campo start_date."
+    }
+
 def test_read_contract_nonexistent(client, session):
     last_id = session.query(Contract.id_).order_by(Contract.id_.desc()).first()
     nonexistent_id = (last_id[0] if last_id else 0) + 1
