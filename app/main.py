@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from fastapi import FastAPI
 from app.api.contracts import contracts_router
 
@@ -10,6 +12,6 @@ app = FastAPI(
 
 app.include_router(contracts_router)
 
-@app.get("/")
+@app.get("/health", status_code=HTTPStatus.OK)
 async def health_check():
     return {"status": "ok"}

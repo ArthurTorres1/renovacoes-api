@@ -23,10 +23,6 @@ contracts_router = APIRouter(
     tags=["contracts"]
 )
 
-@contracts_router.get("/health",status_code=HTTPStatus.OK)
-async def get_contracts():
-    return {'status': 'ok'}
-
 @contracts_router.get("/contracts", status_code=HTTPStatus.OK, response_model=ContractList)
 async def get_contract(
     start_date: date | None = None,
