@@ -228,6 +228,24 @@ def test_update_integrity_error(client, contract):
     
     assert response.status_code == HTTPStatus.CONFLICT
     assert response.json() == {"detail": "Contract with vendor_contract_id already exists."}
+ 
+def test_update_contract_not_found(client, session):
+    last_id = session.query(Contract.id_).order_by(Contract.id_.desc()).first()
+    nonexistent_id = (last_id[0] if last_id else 0) + 1
+    response = client.put(
+        f"/api/v1/contracts/{nonexistent_id}",
+        json={
+            "customer_name": "Updated Customer",
+            "manager_name": "Updated Manager",
+            "vendor_contract_id": "VC-2026-004",
+            "product_description": "Updated Product Description",
+            "coverage_end_date": "2027-09-20",
+            "quantity": 15,
+            "total_value": 15000.00
+        }
+    )
+    
+    assert response.status_code == HTTPStatus.NOT_FOUND
     
 def test_renewal_summary_expired(client, session):
     expired_contract = Contract(
