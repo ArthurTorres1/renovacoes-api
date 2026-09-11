@@ -10,7 +10,7 @@ from app.schemas.contract_schema import ContractResponse
 
 def test_health_check(client):
     response = client.get(
-        "/api/v1/health/",
+        "/health",
     )
     
     assert response.status_code == HTTPStatus.OK
